@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RbacApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2a9314a1f41b9fc725ff80e9b3eedd9291a770b5")]
 [assembly: System.Reflection.AssemblyProductAttribute("RbacApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RbacApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
