@@ -37,8 +37,6 @@ namespace RbacApi.Controllers
             var userId = await _userRepository.CreateUserAsync(userModel);
             userModel.UserId = userId;
 
-            await _userRepository.AssignRoleToUserAsync(userId, "viewer");
-
             GetUsersHelper getUserHelper = new()
             {
                 UserId = userModel.UserId,
@@ -56,36 +54,40 @@ namespace RbacApi.Controllers
             var user = await _userRepository.GetUserByUsernameAsync(model.Username);
             if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid username or password" });
             }
 
             var role = await _userRepository.GetUserRoleAsync(user.UserId);
             user.Role = role;
 
-            var token = GenerateJwtToken(user);
+            var permissions = await _userRepository.GetUserPermissionsAsync(user.UserId);
+
+            var token = GenerateJwtToken(user, permissions.ToList());
             return Ok(new { token });
         }
 
 
-        private string GenerateJwtToken(User user)
+        private string GenerateJwtToken(User user, List<string> permissions)
         {
             var claims = new List<Claim>
             {
-                // Include standard claims (e.g., username)
                 new(JwtRegisteredClaimNames.Sub, user.Username),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new(ClaimTypes.Role, user.Role)
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"] ?? "YourSecretKey"));
+            // Add permissions as claims
+            claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:Issuer"],
                 audience: _configuration["JWT:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(2),
+                expires: DateTime.Now.AddMinutes(30),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

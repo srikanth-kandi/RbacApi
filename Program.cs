@@ -21,7 +21,7 @@ builder.Services.AddScoped<IDbConnection>(sp => new NpgsqlConnection(builder.Con
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<RolesRepository>();
-builder.Services.AddScoped<PermissionRepository>();
+builder.Services.AddScoped<IPermissionsRepository, PermissionRepository>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -37,13 +37,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddSingleton<IAuthorizationHandler, CustomRoleHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, CustomAuthorizationHandler>();
 
 builder.Services.AddAuthorization(options =>
         {
-            options.AddPolicy("ViewerPolicy", policy => policy.Requirements.Add(new CustomRoleRequirement("viewer")));
-            options.AddPolicy("EditorPolicy", policy => policy.Requirements.Add(new CustomRoleRequirement("editor")));
-            options.AddPolicy("AdminPolicy", policy => policy.Requirements.Add(new CustomRoleRequirement("admin")));
+            options.AddPolicy("AdminPolicy", policy =>
+                policy.Requirements.Add(new CustomAuthorizationRequirement(
+                    ["admin"], ["create_content", "edit_content", "delete_content", "view_content"])));
+
+            options.AddPolicy("EditorPolicy", policy =>
+                policy.Requirements.Add(new CustomAuthorizationRequirement(
+                    ["editor"], ["edit_content", "view_content"])));
+
+            options.AddPolicy("ViewerPolicy", policy =>
+                policy.Requirements.Add(new CustomAuthorizationRequirement(
+                    ["viewer"], ["view_content"])));
         });
 
 builder.Services.AddEndpointsApiExplorer();

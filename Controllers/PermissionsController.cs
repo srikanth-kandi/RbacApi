@@ -10,9 +10,9 @@ namespace RbacApi.Controllers
     [Route("api/[controller]")]
     public class PermissionsController : ControllerBase
     {
-        private readonly PermissionRepository _permissionRepository;
+        private readonly IPermissionsRepository _permissionRepository;
 
-        public PermissionsController(PermissionRepository permissionRepository)
+        public PermissionsController(IPermissionsRepository permissionRepository)
         {
             _permissionRepository = permissionRepository;
         }
@@ -23,6 +23,40 @@ namespace RbacApi.Controllers
             return await _permissionRepository.GetAllPermissionsAsync();
         }
 
-        // Implement other CRUD endpoints for permissions
+        [HttpGet("{userId}")]
+        [Authorize(Policy = "AdminPolicy")]
+        public async Task<ActionResult<IEnumerable<string>>> GetUserPermissions(int userId)
+        {
+            var permissions = await _permissionRepository.GetUserPermissionsAsync(userId);
+            if (permissions == null)
+            {
+                return NotFound();
+            }
+            return Ok(permissions);
+        }
+
+        [HttpPost("{userId}/grant")]
+        [Authorize(Policy = "AdminPolicy")]
+        public async Task<IActionResult> GrantPermission(int userId, [FromBody] string permissionName)
+        {
+            var result = await _permissionRepository.GrantPermissionAsync(userId, permissionName);
+            if (!result)
+            {
+                return BadRequest(new { message = "Failed to grant permission" });
+            }
+            return Ok(new { message = "Permission granted successfully" });
+        }
+
+        [HttpPost("{userId}/revoke")]
+        [Authorize(Policy = "AdminPolicy")]
+        public async Task<IActionResult> RevokePermission(int userId, [FromBody] string permissionName)
+        {
+            var result = await _permissionRepository.RevokePermissionAsync(userId, permissionName);
+            if (!result)
+            {
+                return BadRequest(new { message = "Failed to revoke permission" });
+            }
+            return Ok(new { message = "Permission revoked successfully" });
+        }
     }
 }

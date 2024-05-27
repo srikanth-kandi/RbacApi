@@ -7,14 +7,9 @@ namespace RbacApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsersController : ControllerBase
+    public class UsersController(UserRepository userRepository) : ControllerBase
     {
-        private readonly UserRepository _userRepository;
-
-        public UsersController(UserRepository userRepository)
-        {
-            _userRepository = userRepository;
-        }
+        private readonly UserRepository _userRepository = userRepository;
 
         // GET: api/Users
         [HttpGet]
@@ -114,8 +109,6 @@ namespace RbacApi.Controllers
             };
             var userId = await _userRepository.CreateUserAsync(user);
             user.UserId = userId;
-
-            await _userRepository.AssignRoleToUserAsync(userId, "viewer");
 
             GetUsersHelper getUsersHelper = new()
             {

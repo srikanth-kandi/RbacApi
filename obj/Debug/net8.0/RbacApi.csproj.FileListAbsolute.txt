@@ -42,3 +42,4 @@ C:\Users\Falcon\source\repos\RbacApi\obj\Debug\net8.0\refint\RbacApi.dll
 C:\Users\Falcon\source\repos\RbacApi\obj\Debug\net8.0\RbacApi.pdb
 C:\Users\Falcon\source\repos\RbacApi\obj\Debug\net8.0\RbacApi.genruntimeconfig.cache
 C:\Users\Falcon\source\repos\RbacApi\obj\Debug\net8.0\ref\RbacApi.dll
+C:\Users\Falcon\source\repos\RbacApi\obj\Debug\net8.0\RbacApi.sourcelink.json

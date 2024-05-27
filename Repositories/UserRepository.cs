@@ -5,19 +5,14 @@ using RbacApi.Controllers;
 
 namespace RbacApi.Repositories
 {
-    public class UserRepository
+    public class UserRepository(IDbConnection dbConnection, IPermissionsRepository permissionsRepository)
     {
-        private readonly IDbConnection _dbConnection;
-
-        public UserRepository(IDbConnection dbConnection)
-        {
-            _dbConnection = dbConnection;
-        }
+        private readonly IDbConnection _dbConnection = dbConnection;
+        private readonly IPermissionsRepository _permissionsRepository = permissionsRepository;
 
         public async Task<IEnumerable<GetUsersHelper>> GetUsersAsync()
         {
-            var sql = @"
-                        SELECT u.user_id, u.username, u.email, r.role_name AS Role
+            var sql = @"SELECT u.user_id, u.username, u.email, r.role_name AS Role
                         FROM Users u
                         LEFT JOIN UserRoles ur ON u.user_id = ur.user_id
                         LEFT JOIN Roles r ON ur.role_id = r.role_id";
@@ -35,7 +30,14 @@ namespace RbacApi.Repositories
             var sql = @"INSERT INTO Users (username, password_hash, email, created_at, updated_at)
                         VALUES (@Username, @PasswordHash, @Email, @CreatedAt, @UpdatedAt)
                         RETURNING user_id";
-            return await _dbConnection.ExecuteScalarAsync<int>(sql, user);
+            var userId = await _dbConnection.ExecuteScalarAsync<int>(sql, user);
+        
+            // Assign default role
+            await AssignRoleToUserAsync(userId, "viewer");
+            // Assign default permission
+            await _permissionsRepository.GrantPermissionAsync(userId, "view_content");
+            
+            return userId;
         }
 
         public async Task<int> UpdateUserAsync(UserUpdate user)
@@ -60,35 +62,35 @@ namespace RbacApi.Repositories
             return await _dbConnection.QueryFirstOrDefaultAsync<User>(sql, new { Username = username });
         }
 
-        public async Task AssignRoleToUserAsync(int userId, string roleName)
+        public async Task<IEnumerable<string>> GetUserPermissionsAsync(int userId)
         {
-            var sqlFetchRoleId = "SELECT role_id FROM Roles WHERE role_name = @RoleName";
-            var roleId = await _dbConnection.ExecuteScalarAsync<int?>(sqlFetchRoleId, new { RoleName = roleName });
-
-            if (roleId == null)
-            {
-                throw new Exception($"Role '{roleName}' not found.");
-            }
-
-            var sqlInsertUserRole = "INSERT INTO UserRoles (user_id, role_id) VALUES (@UserId, @RoleId)";
-            await _dbConnection.ExecuteAsync(sqlInsertUserRole, new { UserId = userId, RoleId = roleId });
+            var sql = @"SELECT p.permission_name
+                    FROM Permissions p
+                    JOIN UserPermissions up ON p.permission_id = up.permission_id
+                    WHERE up.user_id = @UserId";
+            return await _dbConnection.QueryAsync<string>(sql, new { UserId = userId });
         }
 
         public async Task<string> GetUserRoleAsync(int userId)
         {
-            const string sql = @"
-                                SELECT r.role_name
-                                FROM Users u
-                                JOIN UserRoles ur ON u.user_id = ur.user_id
-                                JOIN Roles r ON ur.role_id = r.role_id
-                                WHERE u.user_id = @UserId";
+            var sql = @"SELECT r.role_name
+                    FROM Roles r
+                    JOIN UserRoles ur ON r.role_id = ur.role_id
+                    WHERE ur.user_id = @UserId";
+            return await _dbConnection.QuerySingleOrDefaultAsync<string>(sql, new { UserId = userId });
+        }
 
-            return await _dbConnection.QueryFirstOrDefaultAsync<string>(sql, new { UserId = userId });
+        public async Task AssignRoleToUserAsync(int userId, string roleName)
+        {
+            var sql = @"INSERT INTO UserRoles (user_id, role_id)
+                    SELECT @UserId, role_id FROM Roles WHERE role_name = @RoleName";
+            await _dbConnection.ExecuteAsync(sql, new { UserId = userId, RoleName = roleName });
         }
 
     }
 
-    public class GetUsersHelper {
+    public class GetUsersHelper
+    {
         public int UserId { get; set; }
         public required string Username { get; set; }
         public required string Email { get; set; }

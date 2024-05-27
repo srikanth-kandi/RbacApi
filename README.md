@@ -76,7 +76,7 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 (2, 4), -- editor with view_content
 (3, 4); -- viewer with view_content
 
--- UserPermissions Table (Optional)
+-- UserPermissions Table
 CREATE TABLE UserPermissions (
     user_id INT,
     permission_id INT,
